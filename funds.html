@@ -1,0 +1,136 @@
+
+<!doctype html>
+<html dir="ltr" lang="es">
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+  </head>
+  <body>
+    <script>
+    	let isins = [
+'LU1387591305',
+'IE00B2NXKW18',
+'ES0179555026',
+'LU0073232471',
+'LU0260870158',
+'ES0173311103'
+];
+
+let ownedIsins = [
+'LU1387591305',
+'IE00B2NXKW18',
+'ES0179555026',
+'LU0073232471',
+'LU0260870158',
+'ES0173311103'
+];
+
+let fieldsToRetrieve = [
+'Isin',
+'SecId',
+'Name',
+'LegalName',
+'CategoryName',
+'ClosePriceDate',
+'ClosePrice',
+'PriceCurrency',
+'GBRReturnD1',
+'GBRReturnW1',
+'GBRReturnM3',
+'GBRReturnM6',
+'GBRReturnM0',
+'GBRReturnM12'
+];
+
+let search = window.location.search;
+
+let searchParts = search ? search.split('myfunds=') : ['',''];
+
+addIsins(searchParts[1]);
+printIsinsData(isins);
+
+
+function addIsins(newIsins)
+{
+	if(newIsins != '') {
+		let customIsins = newIsins.split(',');
+		isins = isins.concat(customIsins);
+	}
+}
+
+function printIsinsData(isins)
+{
+	let url = buildUrl(isins);
+
+	$.getJSON(url, function(result){
+		printTable(result.rows);
+	});
+
+}
+
+function buildUrl(isins)
+{
+	let baseUrl = 'https://lt.morningstar.com/api/rest.svc/klr5zyak8x/security/screener?page=1&pageSize=20&sortOrder=LegalName%20asc&outputType=json&version=1&languageId=es-ES&currencyId=EUR&universeIds=FOESP%24%24ALL';
+	let fieldsUrlPart = '&securityDataPoints=' + fieldsToRetrieve.join('%7C');
+	let filtersUrlPart = '&filters=Isin%3AIN%3A' + isins.join('%3A');
+
+	return baseUrl + fieldsUrlPart + filtersUrlPart;
+}
+
+function printTable(isinsData)
+{
+	let table = document.createElement("table");
+	let head = table.createTHead();
+	$(head).addClass("thead-dark");
+	let headRow = head.insertRow();
+
+ 	$.each(fieldsToRetrieve, function(k , v) {
+ 		let headerCell = document.createElement("th")
+        headerCell.appendChild(document.createTextNode(v.toString()));
+        headRow.appendChild(headerCell);
+	});
+	var tbl_body = document.createElement("tbody");
+    var odd_even = false;
+    $.each(isinsData, function() {
+        var tbl_row = tbl_body.insertRow();
+        tbl_row.className = odd_even ? "odd" : "even";
+        if($.inArray(this.Isin, ownedIsins) != -1) {
+        	$(tbl_row).addClass("table-info");
+        }
+        $.each(this, function(k , v) {
+            var cell = tbl_row.insertCell();
+            if(Number.isFinite(v)) {
+            	$(cell).addClass("font-weight-bold");
+            	if(v <= 0) {
+            		$(cell).addClass("text-danger");
+            	} else {
+            		$(cell).addClass("text-success");
+            	}
+            }
+            if(k === "SecId") {
+            	let link = document.createElement("a");
+            	link.href = getFundUrl(v);
+            	link.target = "_blank";
+            	link.appendChild(document.createTextNode(v.toString()));
+            	cell.appendChild(link);
+            }
+            else {
+            	cell.appendChild(document.createTextNode(v.toString()));
+            }
+        });        
+        odd_even = !odd_even;               
+    });
+    $(table).addClass("table").addClass("table-striped")
+    $(table).append(tbl_body)
+    $(document.body).empty()
+    $(document.body).prepend(table)
+}
+
+function getFundUrl(secId)
+{
+	return 'https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=' + secId;
+}
+    </script>
+  </body>
+</html>
