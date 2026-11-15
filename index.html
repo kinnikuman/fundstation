@@ -11,7 +11,7 @@
     <div class="container py-5">
         <header class="mb-4">
             <h1 class="h3 fw-bold text-dark">Fundstation</h1>
-            <p class="text-muted">Seguimiento moderno y actualizado de fondos de inversión</p>
+            <p class="text-muted">Seguimiento moderno y actualizado de fondos de inversión y ETFs</p>
         </header>
 
         <!-- Loading state -->
@@ -54,7 +54,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // Tus ISINs reales por defecto
+            // Tus ISINs reales por defecto (marcados en azul)
             const defaultFunds = [
                 "ES0173311103",
                 "LU0281484880",
@@ -123,9 +123,9 @@
             }
 
             try {
-                // Consultar cada ISIN en paralelo usando el universo FOESP$$ALL + filtro por ISIN
+                // Función robusta para buscar cada fondo probando con y sin universo
                 const fetchPromises = fundsList.map(async (isin) => {
-                    const params = new URLSearchParams({
+                    const baseParams = {
                         page: '1',
                         pageSize: '1',
                         sortOrder: 'LegalName asc',
@@ -133,20 +133,28 @@
                         version: '1',
                         languageId: 'es-ES',
                         currencyId: 'EUR',
-                        universeIds: 'FOESP$$ALL',
                         filters: 'Isin:IN:' + isin,
                         securityDataPoints: 'Isin|SecId|Name|LegalName|CategoryName|ClosePriceDate|ClosePrice|PriceCurrency|GBRReturnD1|GBRReturnW1|GBRReturnM3|GBRReturnM6|GBRReturnM0|GBRReturnM12'
-                    });
+                    };
 
-                    try {
-                        const res = await fetchMorningstarJSONP(`${baseUrl}?${params.toString()}`);
-                        if (res && res.rows && res.rows.length > 0) {
-                            const matchedRow = res.rows.find(r => (r.Isin || '').toUpperCase() === isin.toUpperCase());
-                            return matchedRow || res.rows[0];
-                        }
-                    } catch (e) {
-                        console.error("Error consultando ISIN:", isin, e);
+                    // Intento 1: Con universo español FOESP$$ALL
+                    let params1 = new URLSearchParams({ ...baseParams, universeIds: 'FOESP$$ALL' });
+                    let res = await fetchMorningstarJSONP(`${baseUrl}?${params1.toString()}`);
+                    if (res && res.rows && res.rows.length > 0) {
+                        const matched = res.rows.find(r => (r.Isin || '').toUpperCase() === isin.toUpperCase());
+                        if (matched) return matched;
+                        return res.rows[0];
                     }
+
+                    // Intento 2: Sin universo (por si es ETF o de otra categoría/país)
+                    let params2 = new URLSearchParams(baseParams);
+                    res = await fetchMorningstarJSONP(`${baseUrl}?${params2.toString()}`);
+                    if (res && res.rows && res.rows.length > 0) {
+                        const matched = res.rows.find(r => (r.Isin || '').toUpperCase() === isin.toUpperCase());
+                        if (matched) return matched;
+                        return res.rows[0];
+                    }
+
                     return null;
                 });
 
@@ -163,7 +171,7 @@
 
                 validFunds.forEach(fund => {
                     const fundIsin = (fund.Isin || '').toUpperCase();
-                    // Si el fondo pertenece a la lista por defecto, se marca en azul (table-primary)
+                    // Solo los 8 por defecto se marcan en azul (table-primary). Los de URL van sin color.
                     const isDefault = defaultFunds.includes(fundIsin);
                     const rowClass = isDefault ? 'table-primary' : '';
 
@@ -209,6 +217,11 @@
                     </div>
                 `;
             }
+        });
+    </script>
+</body>
+</html>
+        }
         });
     </script>
 </body>
