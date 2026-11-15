@@ -113,7 +113,7 @@
             }
 
             try {
-                // Consultar cada ISIN individualmente en paralelo
+                // Consultar cada ISIN individualmente usando el filtro estricto por ISIN
                 const fetchPromises = fundsList.map(async (isin) => {
                     const params = new URLSearchParams({
                         page: '1',
@@ -123,14 +123,16 @@
                         version: '1',
                         languageId: 'es-ES',
                         currencyId: 'EUR',
-                        securityIds: isin,
+                        filters: 'Isin:IN:' + isin,
                         securityDataPoints: 'Isin|SecId|Name|LegalName|CategoryName|ClosePriceDate|ClosePrice|PriceCurrency|GBRReturnD1|GBRReturnW1|GBRReturnM3|GBRReturnM6|GBRReturnM0|GBRReturnM12'
                     });
 
                     try {
                         const res = await fetchMorningstarJSONP(`${baseUrl}?${params.toString()}`);
                         if (res && res.rows && res.rows.length > 0) {
-                            return res.rows[0];
+                            // Asegurarnos de que el resultado coincide realmente con el ISIN buscado
+                            const matchedRow = res.rows.find(r => (r.Isin || '').toUpperCase() === isin.toUpperCase());
+                            return matchedRow || res.rows[0];
                         }
                     } catch (e) {
                         console.error("Error consultando ISIN:", isin, e);
