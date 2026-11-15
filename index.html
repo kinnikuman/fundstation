@@ -54,16 +54,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // Fondos por defecto
+            // Tus ISINs reales por defecto
             let defaultFunds = [
-                "IE00B4L5Y983",
-                "IE00B80G2217",
-                "LU0996177829",
-                "LU1829221024",
-                "LU0950674332",
-                "IE0032895942",
-                "LU0119620416",
-                "LU0360869395"
+                "ES0173311103",
+                "LU0281484880",
+                "LU1213836080",
+                "LU0300834669",
+                "ES0110407162",
+                "LU3038481936",
+                "ES0174115065",
+                "LU1598719752"
             ];
 
             // Leer parámetro ?myfunds= de la URL
@@ -89,7 +89,7 @@
 
             const baseUrl = 'https://lt.morningstar.com/api/rest.svc/9vehuxllxs/security/screener';
 
-            // Función JSONP moderna con promesa para una URL dada
+            // Función JSONP moderna con promesa
             function fetchMorningstarJSONP(url) {
                 return new Promise((resolve, reject) => {
                     const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
@@ -111,7 +111,7 @@
             }
 
             try {
-                // Consultar cada ISIN en paralelo de forma independiente y exacta
+                // Consultar cada ISIN individualmente en paralelo
                 const fetchPromises = fundsList.map(async (isin) => {
                     const params = new URLSearchParams({
                         page: '1',
@@ -121,8 +121,7 @@
                         version: '1',
                         languageId: 'es-ES',
                         currencyId: 'EUR',
-                        universeIds: 'FOESP$$ALL',
-                        filters: 'Isin:IN:' + isin,
+                        securityIds: isin,
                         securityDataPoints: 'Isin|SecId|Name|LegalName|CategoryName|ClosePriceDate|ClosePrice|PriceCurrency|GBRReturnD1|GBRReturnW1|GBRReturnM3|GBRReturnM6|GBRReturnM0|GBRReturnM12'
                     });
 
