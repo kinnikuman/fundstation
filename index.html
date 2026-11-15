@@ -146,7 +146,7 @@
                         return res.rows[0];
                     }
 
-                    // Intento 2: Sin universo (por si es ETF o de otra categoría/país)
+                    // Intento 2: Sin universo (por si es de otra categoría o país como ES0109642035)
                     let params2 = new URLSearchParams(baseParams);
                     res = await fetchMorningstarJSONP(`${baseUrl}?${params2.toString()}`);
                     if (res && res.rows && res.rows.length > 0) {
@@ -205,6 +205,23 @@
                     `;
                     tbody.appendChild(tr);
                 });
+
+                tableCard.style.display = 'block';
+
+            } catch (err) {
+                loadingEl.style.setProperty('display', 'none', 'important');
+                errorEl.innerHTML = `
+                    <div class="alert alert-danger shadow-sm">
+                        <h4 class="alert-heading h6 fw-bold">Error al conectar con Morningstar</h4>
+                        <p class="mb-0">No se han podido cargar los datos (${err.message}).</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
+            });
 
                 tableCard.style.display = 'block';
 
