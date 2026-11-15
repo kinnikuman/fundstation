@@ -1,142 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundstation - Seguimiento de Fondos</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <header class="mb-4">
+            <h1 class="h3 fw-bold text-dark">Fundstation</h1>
+            <p class="text-muted">Seguimiento moderno y actualizado de fondos de inversión</p>
+        </header>
 
-<!doctype html>
-<html dir="ltr" lang="es">
-  <head>
-    <meta charset="utf-8">
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
-  </head>
-  <body>
+        <!-- Loading state -->
+        <div id="loading" class="alert alert-primary d-flex align-items-center shadow-sm" role="alert">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            <div>Consultando datos de Morningstar en tiempo real...</div>
+        </div>
+
+        <!-- Error container -->
+        <div id="error-container"></div>
+
+        <!-- Funds Table -->
+        <div class="card shadow-sm border-0" id="table-card" style="display: none;">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Nombre</th>
+                                <th>ISIN</th>
+                                <th>Categoría</th>
+                                <th class="text-end">Precio</th>
+                                <th class="text-center">Fecha</th>
+                                <th class="text-end">1D (%)</th>
+                                <th class="text-end">1W (%)</th>
+                                <th class="text-end">3M (%)</th>
+                                <th class="text-end">6M (%)</th>
+                                <th class="text-end">1Y (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="funds-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    	let isins = [
-'ES0173311103',
-'LU0281484880',
-'LU1213836080',
-'LU0300834669',
-'ES0110407162',
-'LU3038481936',
-'ES0174115065',
-'LU1598719752'
-];
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Tus fondos por defecto originales (puedes añadir o modificar ISINs aquí si lo deseas)
+            let defaultFunds = [
+                "IE00B4L5Y983",
+                "IE00B80G2217",
+                "LU0996177829",
+                "LU1829221024",
+                "LU0950674332",
+                "IE0032895942",
+                "LU0119620416",
+                "LU0360869395"
+            ];
 
-let ownedIsins = [
-'ES0173311103',
-'LU0281484880',
-'LU1213836080',
-'LU0300834669',
-'ES0110407162',
-'LU3038481936',
-'ES0174115065',
-'LU1598719752'
-];
+            // Leer parámetro ?myfunds= de la URL y combinarlos sin duplicados
+            const urlParams = new URLSearchParams(window.location.search);
+            const myFundsParam = urlParams.get('myfunds');
 
-let fieldsToRetrieve = [
-'Isin',
-'SecId',
-'Name',
-'LegalName',
-'CategoryName',
-'ClosePriceDate',
-'ClosePrice',
-'PriceCurrency',
-'GBRReturnD1',
-'GBRReturnW1',
-'GBRReturnM3',
-'GBRReturnM6',
-'GBRReturnM0',
-'GBRReturnM12'
-];
-
-let search = window.location.search;
-
-let searchParts = search ? search.split('myfunds=') : ['',''];
-
-addIsins(searchParts[1]);
-printIsinsData(isins);
-
-
-function addIsins(newIsins)
-{
-	if(newIsins != '') {
-		let customIsins = newIsins.split(',');
-		isins = isins.concat(customIsins);
-	}
-}
-
-function printIsinsData(isins)
-{
-	let url = buildUrl(isins);
-
-	$.getJSON(url, function(result){
-		printTable(result.rows);
-	});
-
-}
-
-function buildUrl(isins)
-{
-	let baseUrl = 'https://lt.morningstar.com/api/rest.svc/klr5zyak8x/security/screener?page=1&pageSize=20&sortOrder=LegalName%20asc&outputType=json&version=1&languageId=es-ES&currencyId=EUR&universeIds=FOESP%24%24ALL';
-	let fieldsUrlPart = '&securityDataPoints=' + fieldsToRetrieve.join('%7C');
-	let filtersUrlPart = '&filters=Isin%3AIN%3A' + isins.join('%3A');
-
-	return baseUrl + fieldsUrlPart + filtersUrlPart;
-}
-
-function printTable(isinsData)
-{
-	let table = document.createElement("table");
-	let head = table.createTHead();
-	$(head).addClass("thead-dark");
-	let headRow = head.insertRow();
-
- 	$.each(fieldsToRetrieve, function(k , v) {
- 		let headerCell = document.createElement("th")
-        headerCell.appendChild(document.createTextNode(v.toString()));
-        headRow.appendChild(headerCell);
-	});
-	var tbl_body = document.createElement("tbody");
-    var odd_even = false;
-    $.each(isinsData, function() {
-        var tbl_row = tbl_body.insertRow();
-        tbl_row.className = odd_even ? "odd" : "even";
-        if($.inArray(this.Isin, ownedIsins) != -1) {
-        	$(tbl_row).addClass("table-info");
-        }
-        $.each(this, function(k , v) {
-            var cell = tbl_row.insertCell();
-            if(Number.isFinite(v)) {
-            	$(cell).addClass("font-weight-bold");
-            	if(v <= 0) {
-            		$(cell).addClass("text-danger");
-            	} else {
-            		$(cell).addClass("text-success");
-            	}
+            let fundsList = [...defaultFunds];
+            if (myFundsParam) {
+                const extraFunds = myFundsParam.split(',').map(f => f.trim()).filter(f => f);
+                fundsList = [...new Set([...fundsList, ...extraFunds])];
             }
-            if(k === "SecId") {
-            	let link = document.createElement("a");
-            	link.href = getFundUrl(v);
-            	link.target = "_blank";
-            	link.appendChild(document.createTextNode(v.toString()));
-            	cell.appendChild(link);
-            }
-            else {
-            	cell.appendChild(document.createTextNode(v.toString()));
-            }
-        });        
-        odd_even = !odd_even;               
-    });
-    $(table).addClass("table").addClass("table-striped")
-    $(table).append(tbl_body)
-    $(document.body).empty()
-    $(document.body).prepend(table)
-}
 
-function getFundUrl(secId)
-{
-	return 'https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=' + secId;
-}
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error-container');
+            const tableCard = document.getElementById('table-card');
+            const tbody = document.getElementById('funds-body');
+
+            if (fundsList.length === 0) {
+                loadingEl.style.display = 'none';
+                errorEl.innerHTML = '<div class="alert alert-warning shadow-sm">No hay fondos configurados.</div>';
+                return;
+            }
+
+            const securityIds = fundsList.join(',');
+            const baseUrl = 'https://lt.morningstar.com/api/rest.svc/klr5zyak8x/security/screener';
+            const params = new URLSearchParams({
+                page: '1',
+                pageSize: '50',
+                sortOrder: 'LegalName asc',
+                securityIds: securityIds,
+                securityDataPoints: 'Isin,SecId,Name,LegalName,CategoryName,ClosePriceDate,ClosePrice,PriceCurrency,GBRReturnD1,GBRReturnW1,GBRReturnM3,GBRReturnM6,GBRReturnM0,GBRReturnM12'
+            });
+
+            // Función JSONP moderna con promesa
+            function fetchMorningstarJSONP(url) {
+                return new Promise((resolve, reject) => {
+                    const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+                    window[callbackName] = function(data) {
+                        delete window[callbackName];
+                        if (script.parentNode) script.parentNode.removeChild(script);
+                        resolve(data);
+                    };
+
+                    const script = document.createElement('script');
+                    script.src = url + '&callback=' + callbackName;
+                    script.onerror = function() {
+                        delete window[callbackName];
+                        if (script.parentNode) script.parentNode.removeChild(script);
+                        reject(new Error('Fallo de red o servicio no disponible'));
+                    };
+                    document.body.appendChild(script);
+                });
+            }
+
+            try {
+                const targetUrl = `${baseUrl}?${params.toString()}`;
+                const result = await fetchMorningstarJSONP(targetUrl);
+
+                loadingEl.style.display = 'none';
+
+                if (!result || !result.rows || result.rows.length === 0) {
+                    errorEl.innerHTML = '<div class="alert alert-warning shadow-sm">Morningstar no ha devuelto registros para los ISINs indicados. Es posible que el identificador o el servicio no estén disponibles.</div>';
+                    return;
+                }
+
+                result.rows.forEach(fund => {
+                    const isCustom = myFundsParam && myFundsParam.toUpperCase().includes((fund.Isin || '').toUpperCase());
+                    const rowClass = isCustom ? 'table-primary' : '';
+
+                    const tr = document.createElement('tr');
+                    if (rowClass) tr.className = rowClass;
+
+                    const formatVal = (val) => {
+                        if (val !== undefined && val !== null && !isNaN(val)) {
+                            const num = Number(val);
+                            const cls = num > 0 ? 'text-success fw-semibold' : (num < 0 ? 'text-danger fw-semibold' : '');
+                            return `<span class="${cls}">${num.toFixed(2)}%</span>`;
+                        }
+                        return '-';
+                    };
+
+                    tr.innerHTML = `
+                        <td>
+                            <a href="https://www.morningstar.es/es/funds/snapshot/snapshot.aspx?id=${fund.SecId || ''}" target="_blank" class="text-decoration-none fw-bold text-dark">
+                                ${fund.LegalName || fund.Name || 'N/D'}
+                            </a>
+                        </td>
+                        <td><code>${fund.Isin || 'N/D'}</code></td>
+                        <td><span class="badge bg-secondary">${fund.CategoryName || 'N/D'}</span></td>
+                        <td class="text-end fw-bold">${fund.ClosePrice !== undefined ? fund.ClosePrice + ' ' + (fund.PriceCurrency || '') : 'N/D'}</td>
+                        <td class="text-center text-muted small">${fund.ClosePriceDate ? fund.ClosePriceDate.substring(0, 10) : 'N/D'}</td>
+                        <td class="text-end">${formatVal(fund.GBRReturnD1)}</td>
+                        <td class="text-end">${formatVal(fund.GBRReturnW1)}</td>
+                        <td class="text-end">${formatVal(fund.GBRReturnM3)}</td>
+                        <td class="text-end">${formatVal(fund.GBRReturnM6)}</td>
+                        <td class="text-end">${formatVal(fund.GBRReturnM12)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                tableCard.style.display = 'block';
+
+            } catch (err) {
+                loadingEl.style.display = 'none';
+                errorEl.innerHTML = `
+                    <div class="alert alert-danger shadow-sm">
+                        <h4 class="alert-heading h6 fw-bold">Error al conectar con Morningstar</h4>
+                        <p class="mb-0">No se han podido cargar los datos (${err.message}). Comprueba tu conexión a internet.</p>
+                    </div>
+                `;
+            }
+        });
     </script>
-  </body>
+</body>
 </html>
-
-
