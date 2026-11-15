@@ -91,29 +91,39 @@
 
             const baseUrl = 'https://lt.morningstar.com/api/rest.svc/9vehuxllxs/security/screener';
 
-            // Función JSONP moderna con promesa
+            // Función JSONP moderna con promesa y timeout de seguridad
             function fetchMorningstarJSONP(url) {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+                    
+                    const timer = setTimeout(() => {
+                        cleanup();
+                        resolve(null);
+                    }, 6000);
+
+                    function cleanup() {
+                        clearTimeout(timer);
+                        if (window[callbackName]) delete window[callbackName];
+                        if (script && script.parentNode) script.parentNode.removeChild(script);
+                    }
+
                     window[callbackName] = function(data) {
-                        delete window[callbackName];
-                        if (script.parentNode) script.parentNode.removeChild(script);
+                        cleanup();
                         resolve(data);
                     };
 
                     const script = document.createElement('script');
                     script.src = url + '&callback=' + callbackName;
                     script.onerror = function() {
-                        delete window[callbackName];
-                        if (script.parentNode) script.parentNode.removeChild(script);
-                        reject(new Error('Fallo de red o servicio no disponible'));
+                        cleanup();
+                        resolve(null);
                     };
                     document.body.appendChild(script);
                 });
             }
 
             try {
-                // Consultar cada ISIN individualmente usando el filtro estricto por ISIN
+                // Consultar cada ISIN en paralelo usando el universo FOESP$$ALL + filtro por ISIN
                 const fetchPromises = fundsList.map(async (isin) => {
                     const params = new URLSearchParams({
                         page: '1',
@@ -123,6 +133,7 @@
                         version: '1',
                         languageId: 'es-ES',
                         currencyId: 'EUR',
+                        universeIds: 'FOESP$$ALL',
                         filters: 'Isin:IN:' + isin,
                         securityDataPoints: 'Isin|SecId|Name|LegalName|CategoryName|ClosePriceDate|ClosePrice|PriceCurrency|GBRReturnD1|GBRReturnW1|GBRReturnM3|GBRReturnM6|GBRReturnM0|GBRReturnM12'
                     });
@@ -130,7 +141,6 @@
                     try {
                         const res = await fetchMorningstarJSONP(`${baseUrl}?${params.toString()}`);
                         if (res && res.rows && res.rows.length > 0) {
-                            // Asegurarnos de que el resultado coincide realmente con el ISIN buscado
                             const matchedRow = res.rows.find(r => (r.Isin || '').toUpperCase() === isin.toUpperCase());
                             return matchedRow || res.rows[0];
                         }
