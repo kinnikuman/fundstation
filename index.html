@@ -72,7 +72,7 @@
 
             let fundsList = [...defaultFunds];
             if (myFundsParam) {
-                // Si se pasa ?myfunds= por URL, filtramos exclusivamente esos fondos
+                // Si se pasa myfunds por URL, filtramos exclusivamente esos fondos
                 fundsList = myFundsParam.split(',').map(f => f.trim()).filter(f => f);
             }
             fundsList = [...new Set(fundsList)];
@@ -88,6 +88,7 @@
                 return;
             }
 
+            // Usar securityIds con el nuevo tenant 9vehuxllxs (sin universeIds para que devuelva exclusivamente los ISINs solicitados)
             const baseUrl = 'https://lt.morningstar.com/api/rest.svc/9vehuxllxs/security/screener';
             const params = new URLSearchParams({
                 page: '1',
@@ -97,7 +98,6 @@
                 version: '1',
                 languageId: 'es-ES',
                 currencyId: 'EUR',
-                universeIds: 'FOESP$$ALL',
                 securityIds: fundsList.join(','),
                 securityDataPoints: 'Isin|SecId|Name|LegalName|CategoryName|ClosePriceDate|ClosePrice|PriceCurrency|GBRReturnD1|GBRReturnW1|GBRReturnM3|GBRReturnM6|GBRReturnM0|GBRReturnM12'
             });
