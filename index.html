@@ -55,7 +55,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             // Tus ISINs reales por defecto
-            let defaultFunds = [
+            const defaultFunds = [
                 "ES0173311103",
                 "LU0281484880",
                 "LU1213836080",
@@ -66,15 +66,17 @@
                 "LU1598719752"
             ];
 
-            // Leer parámetro ?myfunds= de la URL
+            // Leer parámetro ?myfunds= de la URL y sumarlos a los por defecto
             const urlParams = new URLSearchParams(window.location.search);
             const myFundsParam = urlParams.get('myfunds');
 
-            let fundsList = [...defaultFunds];
+            let customFunds = [];
             if (myFundsParam) {
-                fundsList = myFundsParam.split(',').map(f => f.trim()).filter(f => f);
+                customFunds = myFundsParam.split(',').map(f => f.trim().toUpperCase()).filter(f => f);
             }
-            fundsList = [...new Set(fundsList)];
+
+            // Lista unificada para consultar (sin duplicados)
+            const fundsList = [...new Set([...defaultFunds, ...customFunds])];
 
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error-container');
@@ -148,8 +150,10 @@
                 }
 
                 validFunds.forEach(fund => {
-                    const isCustom = myFundsParam && myFundsParam.toUpperCase().includes((fund.Isin || '').toUpperCase());
-                    const rowClass = isCustom ? 'table-primary' : '';
+                    const fundIsin = (fund.Isin || '').toUpperCase();
+                    // Si el fondo pertenece a la lista por defecto, se marca en azul (table-primary)
+                    const isDefault = defaultFunds.includes(fundIsin);
+                    const rowClass = isDefault ? 'table-primary' : '';
 
                     const tr = document.createElement('tr');
                     if (rowClass) tr.className = rowClass;
