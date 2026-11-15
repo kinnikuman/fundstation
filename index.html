@@ -86,7 +86,7 @@
                 return;
             }
 
-            // Nueva API con el tenant clave correcto y filtro por ISIN
+            // Usar securityIds con el nuevo tenant 9vehuxllxs para consulta directa de múltiples ISINs
             const baseUrl = 'https://lt.morningstar.com/api/rest.svc/9vehuxllxs/security/screener';
             const params = new URLSearchParams({
                 page: '1',
@@ -97,8 +97,8 @@
                 languageId: 'es-ES',
                 currencyId: 'EUR',
                 universeIds: 'FOESP$$ALL',
-                securityDataPoints: 'Isin|SecId|Name|LegalName|CategoryName|ClosePriceDate|ClosePrice|PriceCurrency|GBRReturnD1|GBRReturnW1|GBRReturnM3|GBRReturnM6|GBRReturnM0|GBRReturnM12',
-                filters: 'Isin:IN:' + fundsList.join(',')
+                securityIds: fundsList.join(','),
+                securityDataPoints: 'Isin|SecId|Name|LegalName|CategoryName|ClosePriceDate|ClosePrice|PriceCurrency|GBRReturnD1|GBRReturnW1|GBRReturnM3|GBRReturnM6|GBRReturnM0|GBRReturnM12'
             });
 
             // Función JSONP moderna con promesa
