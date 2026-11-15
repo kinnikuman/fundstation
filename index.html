@@ -221,6 +221,24 @@
     </script>
 </body>
 </html>
+hild(tr);
+                });
+
+                tableCard.style.display = 'block';
+
+            } catch (err) {
+                loadingEl.style.setProperty('display', 'none', 'important');
+                errorEl.innerHTML = `
+                    <div class="alert alert-danger shadow-sm">
+                        <h4 class="alert-heading h6 fw-bold">Error al conectar con Morningstar</h4>
+                        <p class="mb-0">No se han podido cargar los datos (${err.message}).</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
             });
 
                 tableCard.style.display = 'block';
