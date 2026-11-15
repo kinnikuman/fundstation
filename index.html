@@ -15,7 +15,7 @@
         </header>
 
         <!-- Loading state -->
-        <div id="loading" class="alert alert-primary d-flex align-items-center shadow-sm" role="alert">
+        <div id="loading" class="alert alert-primary align-items-center shadow-sm" style="display: flex;" role="alert">
             <div class="spinner-border spinner-border-sm me-2" role="status"></div>
             <div>Consultando datos actualizados de Morningstar...</div>
         </div>
@@ -54,6 +54,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            // Fondos por defecto
             let defaultFunds = [
                 "IE00B4L5Y983",
                 "IE00B80G2217",
@@ -65,15 +66,16 @@
                 "LU0360869395"
             ];
 
-            // Leer parámetro ?myfunds= de la URL y combinarlos sin duplicados
+            // Leer parámetro ?myfunds= de la URL
             const urlParams = new URLSearchParams(window.location.search);
             const myFundsParam = urlParams.get('myfunds');
 
             let fundsList = [...defaultFunds];
             if (myFundsParam) {
-                const extraFunds = myFundsParam.split(',').map(f => f.trim()).filter(f => f);
-                fundsList = [...new Set([...fundsList, ...extraFunds])];
+                // Si se pasa ?myfunds= por URL, filtramos exclusivamente esos fondos
+                fundsList = myFundsParam.split(',').map(f => f.trim()).filter(f => f);
             }
+            fundsList = [...new Set(fundsList)];
 
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error-container');
@@ -81,12 +83,11 @@
             const tbody = document.getElementById('funds-body');
 
             if (fundsList.length === 0) {
-                loadingEl.style.display = 'none';
+                loadingEl.style.setProperty('display', 'none', 'important');
                 errorEl.innerHTML = '<div class="alert alert-warning shadow-sm">No hay fondos configurados.</div>';
                 return;
             }
 
-            // Usar securityIds con el nuevo tenant 9vehuxllxs para consulta directa de múltiples ISINs
             const baseUrl = 'https://lt.morningstar.com/api/rest.svc/9vehuxllxs/security/screener';
             const params = new URLSearchParams({
                 page: '1',
@@ -101,7 +102,6 @@
                 securityDataPoints: 'Isin|SecId|Name|LegalName|CategoryName|ClosePriceDate|ClosePrice|PriceCurrency|GBRReturnD1|GBRReturnW1|GBRReturnM3|GBRReturnM6|GBRReturnM0|GBRReturnM12'
             });
 
-            // Función JSONP moderna con promesa
             function fetchMorningstarJSONP(url) {
                 return new Promise((resolve, reject) => {
                     const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
@@ -126,7 +126,8 @@
                 const targetUrl = `${baseUrl}?${params.toString()}`;
                 const result = await fetchMorningstarJSONP(targetUrl);
 
-                loadingEl.style.display = 'none';
+                // Ocultar mensaje de carga correctamente
+                loadingEl.style.setProperty('display', 'none', 'important');
 
                 if (!result || !result.rows || result.rows.length === 0) {
                     errorEl.innerHTML = '<div class="alert alert-warning shadow-sm">Morningstar no ha devuelto registros para los ISINs indicados.</div>';
@@ -171,7 +172,7 @@
                 tableCard.style.display = 'block';
 
             } catch (err) {
-                loadingEl.style.display = 'none';
+                loadingEl.style.setProperty('display', 'none', 'important');
                 errorEl.innerHTML = `
                     <div class="alert alert-danger shadow-sm">
                         <h4 class="alert-heading h6 fw-bold">Error al conectar con Morningstar</h4>
