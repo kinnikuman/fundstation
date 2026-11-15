@@ -31,12 +31,11 @@
             padding: 13px 12px;
         }
 
-        /* Fondos predeterminados en azul */
-        .default-fund {
+        .default-fund > td {
             background-color: #e8f2ff !important;
         }
 
-        .default-fund:hover {
+        .default-fund:hover > td {
             background-color: #d8eaff !important;
         }
 
@@ -90,9 +89,7 @@
 
         <div class="card-body p-0">
             <div class="table-responsive">
-
                 <table class="table table-hover mb-0 align-middle">
-
                     <thead class="table-dark">
                         <tr>
                             <th>Nombre</th>
@@ -107,9 +104,7 @@
                             <th class="text-end">1Y (%)</th>
                         </tr>
                     </thead>
-
                     <tbody id="funds-body"></tbody>
-
                 </table>
             </div>
         </div>
@@ -120,7 +115,10 @@
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // Fondos predeterminados
+    // ==========================================
+    // CONFIGURACIÓN DE FONDOS
+    // ==========================================
+
     const defaultFunds = [
         "ES0173311103",
         "LU0281484880",
@@ -140,7 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .map(f => f.trim().toUpperCase())
         .filter(f => /^[A-Z]{2}[A-Z0-9]{10}$/.test(f));
 
-    // Combinar fondos sin duplicados
+    // Combinar sin duplicados
     const fundsList = [
         ...new Set([...defaultFunds, ...customFunds])
     ];
@@ -150,28 +148,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tableCard = document.getElementById('table-card');
     const tbody = document.getElementById('funds-body');
 
-    // Mostrar errores
-    function showError(message) {
-        loadingEl.style.display = 'none';
-        errorEl.innerHTML = '';
+    // ==========================================
+    // API MORNINGSTAR
+    // ==========================================
 
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-danger shadow-sm';
+    const baseUrl =
+        'https://lt.morningstar.com/api/rest.svc/9vehuxllxs/security/screener';
 
-        const title = document.createElement('strong');
-        title.textContent = 'Error al cargar los fondos';
+    const securityDataPoints = [
+        'Isin',
+        'SecId',
+        'Name',
+        'LegalName',
+        'CategoryName',
+        'ClosePriceDate',
+        'ClosePrice',
+        'PriceCurrency',
+        'GBRReturnD1',
+        'GBRReturnW1',
+        'GBRReturnM3',
+        'GBRReturnM6',
+        'GBRReturnM12'
+    ].join('|');
 
-        const description = document.createElement('p');
-        description.className = 'mb-0 mt-2';
-        description.textContent = message;
+    // ==========================================
+    // JSONP
+    // ==========================================
 
-        alert.appendChild(title);
-        alert.appendChild(description);
-        errorEl.appendChild(alert);
-    }
-
-    // Consulta JSONP a Morningstar
     function fetchJSONP(url) {
+
         return new Promise((resolve, reject) => {
 
             const callbackName = 'fundstation_' +
@@ -179,21 +184,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Math.random().toString(36).substring(2);
 
             const script = document.createElement('script');
+
             let finished = false;
 
             const timer = setTimeout(() => {
-                finish(new Error(
-                    'Tiempo de espera agotado al conectar con Morningstar.'
-                ));
+                finish(new Error('Tiempo de espera agotado.'));
             }, 12000);
 
             function finish(error, data) {
+
                 if (finished) return;
 
                 finished = true;
+
                 clearTimeout(timer);
 
                 delete window[callbackName];
+
                 script.remove();
 
                 if (error) {
@@ -208,9 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             script.onerror = () => {
-                finish(new Error(
-                    'No se ha podido conectar con Morningstar.'
-                ));
+                finish(new Error('Error de conexión con Morningstar.'));
             };
 
             script.src = url + '&callback=' + callbackName;
@@ -219,7 +224,86 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Formatear rentabilidades
+    // ==========================================
+    // CONSULTA INDIVIDUAL DE CADA FONDO
+    // ==========================================
+
+    async function fetchFund(isin) {
+
+        const baseParams = {
+            page: '1',
+            pageSize: '1',
+            sortOrder: 'LegalName asc',
+            outputType: 'json',
+            version: '1',
+            languageId: 'es-ES',
+            currencyId: 'EUR',
+            filters: 'Isin:IN:' + isin,
+            securityDataPoints: securityDataPoints
+        };
+
+        // Primera búsqueda: universo español
+        try {
+
+            const params1 = new URLSearchParams({
+                ...baseParams,
+                universeIds: 'FOESP$$ALL'
+            });
+
+            const result1 = await fetchJSONP(
+                `${baseUrl}?${params1.toString()}`
+            );
+
+            if (result1 && Array.isArray(result1.rows)) {
+
+                const matched = result1.rows.find(
+                    f => (f.Isin || '').toUpperCase() === isin
+                );
+
+                if (matched) return matched;
+            }
+
+        } catch (error) {
+            console.warn(
+                'Primera búsqueda fallida para ' + isin,
+                error
+            );
+        }
+
+        // Segunda búsqueda: sin restringir el universo
+        try {
+
+            const params2 = new URLSearchParams(baseParams);
+
+            const result2 = await fetchJSONP(
+                `${baseUrl}?${params2.toString()}`
+            );
+
+            if (result2 && Array.isArray(result2.rows)) {
+
+                const matched = result2.rows.find(
+                    f => (f.Isin || '').toUpperCase() === isin
+                );
+
+                if (matched) return matched;
+            }
+
+        } catch (error) {
+            console.warn(
+                'Segunda búsqueda fallida para ' + isin,
+                error
+            );
+        }
+
+        console.warn('Fondo no encontrado:', isin);
+
+        return null;
+    }
+
+    // ==========================================
+    // FORMATO DE DATOS
+    // ==========================================
+
     function formatPercent(value) {
 
         if (value === null || value === undefined || value === '') {
@@ -228,9 +312,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const number = Number(value);
 
-        if (!Number.isFinite(number)) {
-            return '-';
-        }
+        if (!Number.isFinite(number)) return '-';
 
         const cls = number > 0
             ? 'positive'
@@ -241,31 +323,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `<span class="${cls}">${number.toFixed(2)}%</span>`;
     }
 
-    // Añadir celda
     function addCell(row, content, className = '') {
+
         const td = document.createElement('td');
+
         td.className = className;
         td.innerHTML = content;
+
         row.appendChild(td);
     }
 
-    // Pintar fondo
+    // ==========================================
+    // PINTAR TABLA
+    // ==========================================
+
     function renderFund(fund) {
 
         const isin = (fund.Isin || '').toUpperCase();
 
-        // Identificar fondos predeterminados
         const isDefault = defaultFunds.includes(isin);
 
         const row = document.createElement('tr');
 
-        // Los fondos predeterminados aparecen en azul
         if (isDefault) {
             row.classList.add('default-fund');
         }
 
-        // Nombre y enlace Morningstar
+        // Nombre
         const nameCell = document.createElement('td');
+
         nameCell.className = 'fund-name';
 
         const link = document.createElement('a');
@@ -277,18 +363,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.className = 'text-decoration-none fw-bold text-dark';
+
         link.textContent = fund.LegalName || fund.Name || 'N/D';
 
         nameCell.appendChild(link);
         row.appendChild(nameCell);
 
+        // ISIN
         addCell(row, `<code>${isin || 'N/D'}</code>`);
 
+        // Categoría
         addCell(
             row,
             `<span class="badge bg-secondary">${fund.CategoryName || 'N/D'}</span>`
         );
 
+        // Precio
         addCell(
             row,
             fund.ClosePrice !== undefined && fund.ClosePrice !== null
@@ -297,6 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'text-end fw-bold'
         );
 
+        // Fecha
         addCell(
             row,
             fund.ClosePriceDate
@@ -305,6 +396,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'text-center text-muted small'
         );
 
+        // Rentabilidades
         addCell(row, formatPercent(fund.GBRReturnD1), 'text-end');
         addCell(row, formatPercent(fund.GBRReturnW1), 'text-end');
         addCell(row, formatPercent(fund.GBRReturnM3), 'text-end');
@@ -314,137 +406,74 @@ document.addEventListener('DOMContentLoaded', async () => {
         tbody.appendChild(row);
     }
 
+    // ==========================================
+    // EJECUCIÓN
+    // ==========================================
+
     try {
 
-        const baseUrl =
-            'https://lt.morningstar.com/api/rest.svc/9vehuxllxs/security/screener';
-
-        const securityDataPoints = [
-            'Isin',
-            'SecId',
-            'Name',
-            'LegalName',
-            'CategoryName',
-            'ClosePriceDate',
-            'ClosePrice',
-            'PriceCurrency',
-            'GBRReturnD1',
-            'GBRReturnW1',
-            'GBRReturnM3',
-            'GBRReturnM6',
-            'GBRReturnM12'
-        ].join('|');
-
-        const baseParams = {
-            page: '1',
-            pageSize: '100',
-            sortOrder: 'LegalName asc',
-            outputType: 'json',
-            version: '1',
-            languageId: 'es-ES',
-            currencyId: 'EUR',
-            filters: 'Isin:IN:' + fundsList.join(':'),
-            securityDataPoints: securityDataPoints
-        };
-
-        let result = null;
-
-        // Primera consulta: universo español
-        const params1 = new URLSearchParams({
-            ...baseParams,
-            universeIds: 'FOESP$$ALL'
-        });
-
-        result = await fetchJSONP(
-            `${baseUrl}?${params1.toString()}`
+        // Cada ISIN se consulta individualmente.
+        // Promise.all conserva el orden original.
+        const results = await Promise.all(
+            fundsList.map(isin => fetchFund(isin))
         );
 
-        // Comprobar qué ISIN ha devuelto Morningstar
-        const foundIsins = new Set(
-            (result?.rows || []).map(f =>
-                (f.Isin || '').toUpperCase()
-            )
-        );
-
-        const missingIsins = fundsList.filter(
-            isin => !foundIsins.has(isin)
-        );
-
-        // Si falta algún fondo, intentar sin limitar el universo
-        if (missingIsins.length > 0) {
-
-            const params2 = new URLSearchParams(baseParams);
-
-            result = await fetchJSONP(
-                `${baseUrl}?${params2.toString()}`
-            );
-        }
-
-        if (!result || !Array.isArray(result.rows)) {
-            throw new Error(
-                'Morningstar no ha devuelto una respuesta válida.'
-            );
-        }
-
-        // Crear índice por ISIN
-        const fundsByIsin = new Map();
-
-        result.rows.forEach(fund => {
-
-            if (fund.Isin) {
-                fundsByIsin.set(
-                    fund.Isin.toUpperCase(),
-                    fund
-                );
-            }
-
-        });
-
-        // Respetar el orden solicitado
-        const validFunds = fundsList
-            .map(isin => fundsByIsin.get(isin))
-            .filter(Boolean);
+        const validFunds = results.filter(Boolean);
 
         loadingEl.style.display = 'none';
 
         if (validFunds.length === 0) {
-            showError(
-                'Morningstar no ha devuelto registros para los ISIN indicados. ' +
-                'Comprueba los identificadores o la disponibilidad del servicio.'
-            );
+
+            errorEl.innerHTML = `
+                <div class="alert alert-danger shadow-sm">
+                    No se ha podido recuperar ningún fondo de Morningstar.
+                    Comprueba la conexión y el servicio.
+                </div>
+            `;
+
             return;
         }
 
-        // Pintar tabla
+        // Mostrar fondos encontrados
         validFunds.forEach(renderFund);
 
         document.getElementById('fund-count').textContent =
-            `${validFunds.length} fondos encontrados`;
+            `${validFunds.length} de ${fundsList.length} fondos encontrados`;
 
         tableCard.style.display = 'block';
 
-        // Avisar de fondos no encontrados
-        const finalMissing = fundsList.filter(
-            isin => !fundsByIsin.has(isin)
+        // Mostrar los ISIN que no se han encontrado
+        const foundIsins = new Set(
+            validFunds.map(f => f.Isin.toUpperCase())
         );
 
-        if (finalMissing.length > 0) {
+        const missing = fundsList.filter(
+            isin => !foundIsins.has(isin)
+        );
+
+        if (missing.length > 0) {
 
             const warning = document.createElement('div');
+
             warning.className = 'alert alert-warning mt-3';
 
             warning.textContent =
                 'No se han encontrado estos ISIN: ' +
-                finalMissing.join(', ');
+                missing.join(', ');
 
             errorEl.appendChild(warning);
         }
 
     } catch (error) {
 
-        showError(
-            error.message || 'Error desconocido al consultar Morningstar.'
-        );
+        loadingEl.style.display = 'none';
+
+        errorEl.innerHTML = `
+            <div class="alert alert-danger shadow-sm">
+                <strong>Error al cargar los fondos</strong>
+                <p class="mb-0 mt-2">${error.message}</p>
+            </div>
+        `;
 
         console.error('Fundstation:', error);
     }
