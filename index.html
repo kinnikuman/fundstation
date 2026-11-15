@@ -54,7 +54,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // Fondos por defecto
             let defaultFunds = [
                 "IE00B4L5Y983",
                 "IE00B80G2217",
@@ -66,13 +65,11 @@
                 "LU0360869395"
             ];
 
-            // Leer parámetro ?myfunds= de la URL
             const urlParams = new URLSearchParams(window.location.search);
             const myFundsParam = urlParams.get('myfunds');
 
             let fundsList = [...defaultFunds];
             if (myFundsParam) {
-                // Si se pasa myfunds por URL, filtramos exclusivamente esos fondos
                 fundsList = myFundsParam.split(',').map(f => f.trim()).filter(f => f);
             }
             fundsList = [...new Set(fundsList)];
@@ -88,7 +85,7 @@
                 return;
             }
 
-            // Usar securityIds con el nuevo tenant 9vehuxllxs (sin universeIds para que devuelva exclusivamente los ISINs solicitados)
+            // Usamos securityIds directamente (sin universeIds restrictivos) para admitir tanto ETFs como fondos de cualquier gestora
             const baseUrl = 'https://lt.morningstar.com/api/rest.svc/9vehuxllxs/security/screener';
             const params = new URLSearchParams({
                 page: '1',
@@ -126,7 +123,6 @@
                 const targetUrl = `${baseUrl}?${params.toString()}`;
                 const result = await fetchMorningstarJSONP(targetUrl);
 
-                // Ocultar mensaje de carga correctamente
                 loadingEl.style.setProperty('display', 'none', 'important');
 
                 if (!result || !result.rows || result.rows.length === 0) {
